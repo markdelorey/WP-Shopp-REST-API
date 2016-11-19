@@ -43,7 +43,38 @@ function wp_api_v2_shopp_get_product ( $data ) {
 	
 	if( $p ) ShoppProduct( $p );
 
-	$product->name	=	shopp('product.name', array( 'return' => true) );
+		$product->name	=	shopp( 'product.name', array( 'return' => true ) );
+		
+		// product specs
+		$product->specs	=	array();
+		if( shopp('product.has-specs') ) :  while( shopp( 'product', 'specs' ) ) :
+			$spec	=	new stdClass();
+			$spec->name	=	shopp( 'product', 'getspec', 'name' );
+			$spec->content	=	shopp( 'product', 'getspec', 'content' );
+		
+			$product->specs[]	=	$spec;
+		endwhile; endif;
+		
+		// product categories
+		$product->categories	=	array();
+		if( shopp('product.has-categories') ) :  while( shopp( 'product', 'categories' ) ) :
+			$category	=	new stdClass();
+			$category->name	=	shopp( 'product', 'category', array( 'return' => true ) );
+			$category->id	=	shopp( 'product', 'category', array( 'show' => 'id', 'return' => true ) );
+			$category->slug	=	shopp( 'product', 'category', array( 'show' => 'slug', 'return' => true ) );
+		
+			$product->categories[]	=	$category;
+		endwhile; endif;
+		
+		// product images
+		$product->images	=	array();
+		if ( shopp( 'product.has-images' ) ) : while( shopp( 'product', 'images' ) ) :
+			$image	=	new stdClass();
+			$image->src	=	shopp( 'product', 'image', array( 'property' => 'src', 'return' => true ) );
+			
+			$product->images[]	=	$image;
+		endwhile; endif;
+		
 
     return $product;
 }
