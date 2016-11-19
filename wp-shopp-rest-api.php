@@ -42,8 +42,35 @@ function wp_api_v2_shopp_get_product ( $data ) {
 	}
 	
 	if( $p ) ShoppProduct( $p );
-
-		$product->name	=	shopp( 'product.name', array( 'return' => true ) );
+		
+		// simple fields
+		if( !empty( $data['fields'] ) ) { // user provided list of desired fields
+			
+			$fields	=	explode(',', $data['fields']);
+			
+		} else {
+			$fields	=	array(
+				'id',
+				'name',
+				'coverimage',
+				'description',
+				'freeshipping',
+				'price',
+				'saleprice',
+				'sku',
+				'slug',
+				'stock',
+				'summary',
+				'tax-rate',
+				'type',
+				'url',
+				'weight'
+			);
+		}
+		
+		foreach( $fields as $f ) {
+			$product->{$f}	=	shopp( 'product', 'get'. $f );
+		}
 		
 		// product specs
 		$product->specs	=	array();
@@ -74,6 +101,10 @@ function wp_api_v2_shopp_get_product ( $data ) {
 			
 			$product->images[]	=	$image;
 		endwhile; endif;
+		
+		$product->fields	=	array(
+			$data['fields']
+		);
 		
 
     return $product;
