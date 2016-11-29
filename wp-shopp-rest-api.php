@@ -4,7 +4,7 @@ Plugin Name: WP Shopp REST API
 Version: 0.1 alpha
 Description: Adding Shopp endpoints on WP REST API
 Author: Mark Delorey
-Author URI: http://www.invisiblehandmarketing.com
+Author URI: http://www.markdelorey.com
 */
 
 /*
@@ -59,7 +59,6 @@ function add_shopp_product_metadata_to_rest_response ( $response, $post, $reques
 		
 		// simple fields
 		$fields	=	array(
-			'id',
 			'name',
 			'coverimage',
 			'description',
