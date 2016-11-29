@@ -7,66 +7,74 @@ Author: Mark Delorey
 Author URI: http://www.invisiblehandmarketing.com
 */
 
-/**
- * Get the product catalog (smart category: Catalog Products)
- * @return array - List of product objects
+/*
+ *	Check if Shopp exists
  */
-function wp_api_v2_shopp_get_catalog () {
-	$catalog	=	array();
-	
-	shopp('storefront','catalog-products', array( 'load' => 'true', 'older' => 'oldest' ));
-
-	if( shopp('collection.has-products') ) : while( shopp('collection.products') ) :
-	
-		$p	=	new stdClass();
-		$p->name	=	shopp('product.name', array( 'return' => true) );
-		
-		$catalog[]	=	$p;
-
-	endwhile; endif;
-
-    return $catalog;
+ 
+function _shopp_exists() { 
+	return class_exists( 'Shopp' );
 }
 
 /**
- * Get a product by id or slug
- * @return product - product details
+ **
+ **	shopp_product post type
+ **
+ **/
+
+/*
+ *	Make the shopp_product post type available through the v2 rest api
  */
-function wp_api_v2_shopp_get_product ( $data ) {
-	$product	=	new stdClass();
+add_filter( 'init', '_add_shopp_product_post_type_api_arguments', 11 );
+
+function _add_shopp_product_post_type_api_arguments () {
 	
-	$p	=	shopp_product( $data['id'] );
+	if( _shopp_exists() ) {
 	
-	if( !$p ) {
-		$p	=	shopp_product( $data['id'], 'slug' );
+		global $wp_post_types;
+	
+		if ( isset( $wp_post_types['shopp_product'] ) ) {
+			$wp_post_types['shopp_product']->show_in_rest = true;
+			$wp_post_types['shopp_product']->rest_base = 'shopp_products';
+			$wp_post_types['shopp_product']->rest_controller_class = 'WP_REST_Posts_Controller';
+		}
+		
 	}
+}
+
+/*
+ *	Add additional product context data to shopp_product post types
+ */
+
+add_filter( 'rest_prepare_shopp_product', 'add_shopp_product_metadata_to_rest_response', 10, 3 );
+
+function add_shopp_product_metadata_to_rest_response ( $response, $post, $request ) {
+	
+	if( !_shopp_exists() ) return $post;
+		
+	$product	=	new stdClass();
+
+	$p	=	shopp_product( $post->ID );
 	
 	if( $p ) ShoppProduct( $p );
 		
 		// simple fields
-		if( !empty( $data['fields'] ) ) { // user provided list of desired fields
-			
-			$fields	=	explode(',', $data['fields']);
-			
-		} else {
-			$fields	=	array(
-				'id',
-				'name',
-				'coverimage',
-				'description',
-				'freeshipping',
-				'price',
-				'saleprice',
-				'sku',
-				'slug',
-				'stock',
-				'summary',
-				'tax-rate',
-				'type',
-				'url',
-				'weight'
-			);
-		}
+		$fields	=	array(
+			'id',
+			'name',
+			'coverimage',
+			'description',
+			'freeshipping',
+			'price',
+			'saleprice',
+			'sku',
+			'slug',
+			'stock',
+			'summary',
+			'tax-rate',
+			'type',
+			'url',
+			'weight'
+		);
 		
 		foreach( $fields as $f ) {
 			$product->{$f}	=	shopp( 'product', 'get'. $f );
@@ -102,21 +110,46 @@ function wp_api_v2_shopp_get_product ( $data ) {
 			$product->images[]	=	$image;
 		endwhile; endif;
 		
-		$product->fields	=	array(
-			$data['fields']
-		);
-		
 
-    return $product;
+	$post->shopp_meta	=	$product;
+	
+	return $post;
+	
+}
+
+/**
+ **
+ **	product catalog
+ **
+ **/
+ 
+/**
+ * Get the product catalog (smart category: Catalog Products)
+ * @return array - List of product objects
+ */
+function wp_api_v2_shopp_get_catalog () {
+	
+	if( !_shopp_exists() ) return new WP_Error( 'shopp_not_found', 'Shopp plugin is not found. Please make sure it is installed and activated.', array( 'status' => 501 ) );
+	
+	$catalog	=	array();
+	
+	shopp('storefront','catalog-products', array( 'load' => 'true', 'older' => 'oldest' ));
+
+	if( shopp('collection.has-products') ) : while( shopp('collection.products') ) :
+	
+		$p	=	new stdClass();
+		$p->name	=	shopp('product.name', array( 'return' => true) );
+		
+		$catalog[]	=	$p;
+
+	endwhile; endif;
+
+    return $catalog;
 }
 
 add_action( 'rest_api_init', function () {
     register_rest_route( 'shopp/v1', '/catalog', array(
         'methods' => 'GET',
         'callback' => 'wp_api_v2_shopp_get_catalog',
-    ) );
-    register_rest_route( 'shopp/v1', '/products/(?P<id>[a-zA-Z0-9(-]+)', array(
-        'methods' => 'GET',
-        'callback' => 'wp_api_v2_shopp_get_product',
     ) );
 } );
