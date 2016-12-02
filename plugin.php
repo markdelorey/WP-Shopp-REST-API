@@ -1,6 +1,6 @@
 <?php 
 /*
-Plugin Name: WP Shopp REST API 
+Plugin Name: WP REST API Shopp
 Version: 0.1 alpha
 Description: Adding Shopp endpoints on WP REST API
 Author: Mark Delorey
@@ -28,6 +28,7 @@ add_filter( 'init', '_add_shopp_product_post_type_api_arguments', 11 );
 
 function _add_shopp_product_post_type_api_arguments () {
 	
+	// TODO: add check for WP REST API plugin
 	if( _shopp_exists() ) {
 	
 		global $wp_post_types;
@@ -126,24 +127,35 @@ function add_shopp_product_metadata_to_rest_response ( $response, $post, $reques
  * Get the product catalog (smart category: Catalog Products)
  * @return array - List of product objects
  */
-function wp_api_v2_shopp_get_catalog () {
+
+// TODO: Convert to WP_REST_Posts_Controller->get_items()
+
+function wp_api_v2_shopp_get_catalog ( $request ) {
 	
 	if( !_shopp_exists() ) return new WP_Error( 'shopp_not_found', 'Shopp plugin is not found. Please make sure it is installed and activated.', array( 'status' => 501 ) );
 	
 	$catalog	=	array();
 	
-	shopp('storefront','catalog-products', array( 'load' => 'true', 'older' => 'oldest' ));
+	shopp('storefront','catalog-products', array( 'load' => 'true', 'order' => 'oldest' ));
 
-	if( shopp('collection.has-products') ) : while( shopp('collection.products') ) :
+	if( shopp('collection.has-products') ) :
 	
-		$p	=	new stdClass();
-		$p->name	=	shopp('product.name', array( 'return' => true) );
+		$controller	=	new WP_REST_Posts_Controller( 'shopp_product' );
+	
+		while( shopp('collection.products') ) : // TODO: Load test this loop; default product limit is 1000
 		
-		$catalog[]	=	$p;
+			$post	=	get_post( shopp('product', 'getid') );
+			
+			$catalog[]	=	$controller->prepare_item_for_response( $post, $request );
 
-	endwhile; endif;
+		endwhile;
+		
+	endif;
 
     return $catalog;
+	
+	//return $controller->get_items( $request );
+
 }
 
 add_action( 'rest_api_init', function () {
